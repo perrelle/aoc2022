@@ -1,13 +1,14 @@
 type Interval = (u32,u32);
 
 mod parser  {
-    use nom::{IResult, multi::*, character::complete::*, combinator::*, sequence::separated_pair};
+    use nom::{IResult, multi::*, character::complete::*, combinator::*, sequence::*};
     use crate::day4::Interval;
 
+    fn pair(input: &str) -> IResult<&str, Interval> {
+        separated_pair(u32, char('-'), u32)(input)
+    }
+
     pub fn parse(input: &str) -> IResult<&str, Vec<(Interval,Interval)>> {
-        fn pair(input: &str) -> IResult<&str, Interval> {
-            separated_pair(u32, char('-'), u32)(input)
-        }
         let entry = separated_pair(pair, char(','), pair);
         let (input, data) = separated_list1(line_ending, entry)(input)?;
         let (input, _) = all_consuming(multispace0)(input)?;
