@@ -13,7 +13,7 @@ mod parser  {
         character::complete::*,
         bytes::complete::tag
     };
-    use crate::day5::Command;
+    use super::*;
 
     fn usize(input: &str) -> IResult<&str, usize> {
         let (input, i) = u32(input)?;

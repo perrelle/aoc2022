@@ -2,7 +2,7 @@ type Interval = (u32,u32);
 
 mod parser  {
     use nom::{IResult, multi::*, character::complete::*, combinator::*, sequence::*};
-    use crate::day4::Interval;
+    use super::Interval;
 
     fn pair(input: &str) -> IResult<&str, Interval> {
         separated_pair(u32, char('-'), u32)(input)
