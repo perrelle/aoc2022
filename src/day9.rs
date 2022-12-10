@@ -121,19 +121,19 @@ pub fn solve(input: &str) -> Option<(usize,usize)> {
 }
 
 #[test]
-fn test8_1() {
+fn test9_1() {
     let solution = solve(&include_str!("../inputs/day9.1"));
     assert_eq!(solution, Some ((13,1)));
 }
 
 #[test]
-fn test8_2() {
+fn test9_2() {
     let solution = solve(&include_str!("../inputs/day9.2"));
     assert_eq!(solution, Some ((88,36)));
 }
 
 #[test]
-fn test8_3() {
+fn test9_3() {
     let solution = solve(&include_str!("../inputs/day9.3"));
     assert_eq!(solution, Some ((6181, 2386)));
 }

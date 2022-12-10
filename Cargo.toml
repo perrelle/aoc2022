@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 nom = "7"
 array2d = "0.2"
+assert-str = "0.1"
