@@ -40,7 +40,6 @@ mod parser {
     }
 
     pub fn parse(input: &str) -> IResult<&str, Vec<Command>> {
-        
         let command = separated_pair(direction, space1, u32);
         let commands = separated_list1(line_ending, command);
         all_consuming(terminated(commands, multispace0))(input)
