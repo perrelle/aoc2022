@@ -45,7 +45,7 @@ mod parser  {
             |c| c.to_digit(10).unwrap() as u8);
         let array = map(
             separated_list1(line_ending, many1(digit)),
-            |v| Array2D::from_rows(&v));
+            |v| Array2D::from_rows(&v).unwrap());
         all_consuming(terminated(array, multispace0))(input)
     }
 }
