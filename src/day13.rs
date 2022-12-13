@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fmt};
+use std::{slice, cmp::Ordering, fmt};
 
 #[derive (Debug, PartialEq, Eq, Clone)]
 pub enum Packet {
@@ -13,9 +13,9 @@ impl Ord for Packet {
                 (Packet::Int(i1), Packet::Int(i2)) =>
                     i1.cmp(i2),
                 (Packet::Int(_), Packet::List(l2)) =>
-                    cmp_slices(&[p1.clone()], l2),
+                    cmp_slices(slice::from_ref(p1), l2),
                 (Packet::List(l1), Packet::Int(_)) =>
-                    cmp_slices(l1, &[p2.clone()]),
+                    cmp_slices(l1, slice::from_ref(p2)),
                 (Packet::List(l1), Packet::List(l2)) =>
                     cmp_slices(l1, l2)
             }
