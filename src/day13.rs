@@ -135,7 +135,7 @@ pub fn solve(input: &str) -> Option<(u32,u32)> {
         (signal.iter().position(|x| x == &divider2)? + 1)) as u32;
 
     for p in signal {
-        println!("{}", p);
+        println!("{p}");
     }
 
     Some((solution1, solution2))
