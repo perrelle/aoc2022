@@ -1,8 +1,8 @@
-use std::{collections::{HashMap, BTreeSet}};
+use std::{collections::{HashMap, BTreeSet, BinaryHeap}, cmp::Ordering};
 
 #[derive (Debug)]
 pub struct Valve {
-    name: String,
+    _name: String,
     flow_rate: u32,
     neighbors: Vec<usize>,
     distance: HashMap<usize, u32>
@@ -35,30 +35,52 @@ mod parser {
 
 type VertexSet = BTreeSet<usize>;
 
-static mut COUNT: i32 = 2000000000;
-
-fn dfs(valves: &[Valve], current: usize, remaining: u32, closed: &VertexSet) -> u32 {
+fn _dfs(valves: &[Valve], pos: usize, time: u32, closed: &VertexSet) -> u32 {
     let mut closed = closed.clone();
-    closed.insert(current);
+    closed.remove(&pos);
 
     let mut best = 0;
 
-    unsafe {
-        COUNT -= 1;
-        if COUNT < 0 {
-            panic!()
+    for &n in &closed {
+        let d = *valves[pos].distance.get(&n).unwrap();
+    
+        if time > d {
+            let r = time - d - 1;
+            best = best.max(
+                (r * valves[n].flow_rate) +
+                _dfs(valves, n, r, &closed));
         }
     }
 
-    for (n,d) in &valves[current].distance {
-        if remaining > *d && !closed.contains(&n) {
-            let r = remaining - *d - 1;
-            // println!("{} -> {}, for {} minutes, {} remaining, (rest: {:?})", current, n, d, r, closed);
-            let new_best =
-                (r * valves[*n].flow_rate) +
-                dfs(valves, *n, r, &closed);
-            if new_best > best {
-                best = new_best;
+    best
+}
+
+fn dfs2(valves: &[Valve], pos1: usize, time1: u32, pos2: usize, time2: u32, closed: &VertexSet) -> u32 {
+    let mut best = 0;
+   
+    for &n in closed {
+        let d1 = *valves[pos1].distance.get(&n).unwrap();
+        let d2 = *valves[pos2].distance.get(&n).unwrap();
+        if time1 as i32 - d1 as i32 > time2 as i32 - d2 as i32 {
+            if time1 > d1 {
+                let pos1 = n;
+                let time1 = time1 - d1 - 1;
+                let mut closed = closed.clone();
+                closed.remove(&n);
+                best = best.max(
+                    (time1 * valves[n].flow_rate) +
+                    dfs2(valves, pos1, time1, pos2, time2, &closed));
+            }
+        }
+        else {
+            if time2 > d2 {
+                let pos2 = n;
+                let time2 = time2 - d2 - 1;
+                let mut closed = closed.clone();
+                closed.remove(&n);
+                best = best.max(
+                    (time2 * valves[n].flow_rate) +
+                    dfs2(valves, pos1, time1, pos2, time2, &closed));
             }
         }
     }
@@ -66,7 +88,70 @@ fn dfs(valves: &[Valve], current: usize, remaining: u32, closed: &VertexSet) -> 
     best
 }
 
-pub fn solve(input: &str) -> (u32,i64) {
+
+#[derive(Eq,PartialEq,Debug)]
+struct State {
+    position: usize,
+    time: u32,
+    score: u32,
+    estimate: u32,
+    closed: VertexSet,
+}
+
+impl Ord for State {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.score.cmp(&other.score)
+    }
+}
+
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn estimate(valves: &[Valve], closed: &VertexSet, time: u32) -> u32 {
+    closed.iter().fold(0, |acc, v| acc + valves.get(*v).unwrap().flow_rate * time)
+}
+
+fn bfs(valves: &[Valve], start: usize, time: u32) -> u32 {
+    let mut heap = BinaryHeap::new();
+    let all_valves = VertexSet::from_iter(0..valves.len());
+    let initial_state = State {
+        position: start,
+        time: time,
+        score: 0,
+        estimate: estimate(valves, &all_valves, time),
+        closed: all_valves
+    };
+    heap.push(initial_state);
+
+    while let Some(state) = heap.pop() {
+        println!("{state:?}");
+        let i = state.position;
+        for &j in &state.closed {
+            let d = *valves[i].distance.get(&j).unwrap();
+            if state.time > d && state.closed.contains(&j) {
+                let time = state.time - d - 1;
+                let score = state.score + time * valves[j].flow_rate;
+                let mut closed = state.closed.clone();
+                closed.remove(&j);
+
+                if closed.is_empty() {
+                    return score;
+                }
+
+                let estimate = score + estimate(valves, &closed, time);
+                let state = State { position: j, time, score, closed, estimate };
+                heap.push(state);
+            }
+        }
+    }
+    
+    panic!()
+}
+
+pub fn solve(input: &str) -> (u32,u32) {
     let (_,data) = parser::parse(input).unwrap();
 
     let mut valves = Vec::new();
@@ -75,7 +160,7 @@ pub fn solve(input: &str) -> (u32,i64) {
     for (name, flow_rate, _) in &data {
         names.insert(name, valves.len());
         valves.push(Valve {
-            name: String::from(*name),
+            _name: String::from(*name),
             flow_rate: *flow_rate,
             neighbors: Vec::new(),
             distance: HashMap::new()
@@ -111,20 +196,22 @@ pub fn solve(input: &str) -> (u32,i64) {
     }
 
     let start = *names.get(&"AA").unwrap();
-
-    let solution1 = dfs(&valves, start, 30, &VertexSet::new());
  
-    (solution1,0)
+    let all_valves = VertexSet::from_iter((0..valves.len()).filter(|v| valves[*v].flow_rate > 0));
+    let solution1 = _dfs(&valves, start, 30, &all_valves);
+    let solution2 = dfs2(&valves, start, 26, start, 26, &all_valves);
+ 
+    (solution1,solution2)
 }
 
 #[test]
 fn test16_1() {
     let solution = solve(&include_str!("../inputs/day16.1"));
-    assert_eq!(solution, (1651,0));
+    assert_eq!(solution, (1651,1707));
 }
 
 #[test]
 fn test16_2() {
     let solution = solve(&include_str!("../inputs/day16.2"));
-    assert_eq!(solution, (0,0));
+    assert_eq!(solution, (1828,2292));
 }
