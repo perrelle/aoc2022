@@ -1,3 +1,6 @@
+#![allow(clippy::collapsible_else_if)]
+#![allow(clippy::type_complexity)]
+
 use std::{collections::{HashMap, BTreeSet, BinaryHeap}, cmp::Ordering};
 
 #[derive (Debug)]
@@ -110,18 +113,18 @@ impl PartialOrd for State {
     }
 }
 
-fn estimate(valves: &[Valve], closed: &VertexSet, time: u32) -> u32 {
+fn _estimate(valves: &[Valve], closed: &VertexSet, time: u32) -> u32 {
     closed.iter().fold(0, |acc, v| acc + valves.get(*v).unwrap().flow_rate * time)
 }
 
-fn bfs(valves: &[Valve], start: usize, time: u32) -> u32 {
+fn _bfs(valves: &[Valve], start: usize, time: u32) -> u32 {
     let mut heap = BinaryHeap::new();
     let all_valves = VertexSet::from_iter(0..valves.len());
     let initial_state = State {
         position: start,
-        time: time,
+        time,
         score: 0,
-        estimate: estimate(valves, &all_valves, time),
+        estimate: _estimate(valves, &all_valves, time),
         closed: all_valves
     };
     heap.push(initial_state);
@@ -141,7 +144,7 @@ fn bfs(valves: &[Valve], start: usize, time: u32) -> u32 {
                     return score;
                 }
 
-                let estimate = score + estimate(valves, &closed, time);
+                let estimate = score + _estimate(valves, &closed, time);
                 let state = State { position: j, time, score, closed, estimate };
                 heap.push(state);
             }

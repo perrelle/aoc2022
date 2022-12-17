@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, collections::{VecDeque, HashMap}};
 
 #[derive (Debug, Clone, Copy)]
 pub enum Direction { Left, Right }
@@ -47,35 +47,47 @@ const SHAPES: [&Shape; 5] = [
         &[true, true],
         &[true, true]]];
 
-struct Grid (Vec<[bool; 7]>);
+#[derive (PartialEq, Eq, Clone)]
+struct Grid {
+    cells: VecDeque<[bool; 7]>,
+    offset: usize
+}
+
+const GRID_SIZE: usize = 38;
 
 impl Grid {
     fn empty() -> Self {
-        Grid(Vec::new())
+        Grid { cells: VecDeque::new(), offset: 0 }
     }
 
     fn new_line(&mut self) {
-        self.0.push([false; 7]);
+        if self.cells.len() >= GRID_SIZE {
+            self.cells.pop_front();
+            self.offset += 1;
+        }
+        self.cells.push_back([false; 7]);
     }
 
     fn get(&self, x: usize, y: usize) -> bool {
         assert!(x < 7);
-        if y >= self.0.len() {
+        assert!(y >= self.offset);
+        if y - self.offset >= self.cells.len() {
             return false;
         }
-        self.0[y][x]
+        self.cells[y - self.offset][x]
     }
 
     fn set(&mut self, x: usize, y: usize) {
         assert!(x < 7);
-        while y >= self.0.len() {
+        assert!(y >= self.offset);
+        while y - self.offset >= self.cells.len() {
             self.new_line();
         }
-        self.0[y][x] = true;
+        self.cells[y - self.offset][x] = true;
     }
 
     fn height(&self) -> usize {
-        self.0.len()
+        self.cells.len() + self.offset
     }
 
     fn shape_fits(&self, shape: &Shape, x: usize, y: usize) -> bool {
@@ -98,11 +110,15 @@ impl Grid {
             }
         }
     }
+
+    fn same_top(&self, other: &Self) -> bool {
+        self.cells == other.cells
+    }
 }
 
 impl fmt::Display for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for row in self.0.iter().rev() {
+        for row in self.cells.iter().rev() {
             for &cell in row {
                 write!(f, "{}", if cell {'#'} else {'.'})?
             }
@@ -112,57 +128,83 @@ impl fmt::Display for Grid {
     }
 }
 
-
-pub fn solve(input: &str) -> (usize,u32) {
-    let (_,data) = parser::parse(input).unwrap();
+pub fn solve_part(wind: &[Direction], limit: u64) -> usize {
+    type State = (usize, usize);
+    type Cache = HashMap<State, (u64,Grid)>;
 
     let mut grid = Grid::empty();
-    let mut shape_iterator = SHAPES.iter().cycle();
-    let mut direction_iterator = data.iter().cycle();
+    let mut shape_iterator = SHAPES.iter().enumerate().cycle();
+    let mut direction_iterator = wind.iter().enumerate().cycle();
+    let mut cache = Cache::new();
+    let mut cycle = 1;
+    let mut did_fast_forward = false;
 
-    for _count in 1..=2022 {
-        let shape = shape_iterator.next().unwrap();
+    while cycle <= limit {
+        let (i,shape) = shape_iterator.next().unwrap();
         let (w, h) = (shape[0].len(), shape.len());
         let mut x = 2;
         let mut y = grid.height() + shape.len() + 2;
 
         loop {
-            match *direction_iterator.next().unwrap() {
+            let (j,&direction) = direction_iterator.next().unwrap();
+            match direction {
                 Direction::Left => {
-                    if x > 0 && grid.shape_fits(&shape, x-1, y) {
+                    if x > 0 && grid.shape_fits(shape, x-1, y) {
                         x -= 1;
                     }
                 },
                 Direction::Right => {
-                    if x + w < 7 && grid.shape_fits(&shape, x+1, y) {
+                    if x + w < 7 && grid.shape_fits(shape, x+1, y) {
                         x += 1;
                     }
                 }
             }
 
-            if y >= h && grid.shape_fits(&shape, x, y-1) {
+            if y >= h && grid.shape_fits(shape, x, y-1) {
                 y -= 1;
             }
             else {
-                grid.place_shape(&shape, x, y);
+                grid.place_shape(shape, x, y);
+                if !did_fast_forward {
+                    if let Some(state) = cache.get(&(i,j)) {
+                        let (old_cycle,old_grid) = state;
+                        if grid.same_top(old_grid) {
+                            let period = cycle - old_cycle;
+                            let height = grid.height() - old_grid.height();
+                            let epochs = (limit - cycle) / period;
+                            cycle += epochs * period;
+                            grid.offset += epochs as usize * height;
+                            did_fast_forward = true
+                        }
+                    }
+                    cache.insert((i,j), (cycle, grid.clone()));
+                }
                 break;
             }
         }
+
+        cycle += 1;
     }
 
-    let solution1 = grid.height();
-
-    (solution1,0)
+    grid.height()
 }
+
+
+pub fn solve(input: &str) -> (usize,usize) {
+    let (_,data) = parser::parse(input).unwrap();
+
+    (solve_part(&data, 2022), solve_part(&data, 1000000000000))
+}
+
 
 #[test]
 fn test17_1() {
     let solution = solve(&include_str!("../inputs/day17.1"));
-    assert_eq!(solution, (3068,0));
+    assert_eq!(solution, (3068,1514285714288));
 }
 
 #[test]
 fn test16_2() {
     let solution = solve(&include_str!("../inputs/day17.2"));
-    assert_eq!(solution, (0,0));
+    assert_eq!(solution, (3100,1540634005751));
 }
