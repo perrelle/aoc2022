@@ -1,5 +1,4 @@
 #![allow(clippy::collapsible_else_if)]
-#![allow(clippy::type_complexity)]
 
 use std::{collections::{HashMap, BTreeSet, BinaryHeap}, cmp::Ordering};
 
@@ -22,7 +21,9 @@ mod parser {
         branch::*
     };
 
-    pub fn parse(input: &str) -> IResult<&str, Vec<(&str, u32, Vec<&str>)>> {
+    type ParsedValve<'a> = (&'a str, u32, Vec<&'a str>);
+
+    pub fn parse(input: &str) -> IResult<&str, Vec<ParsedValve>> {
 
         let valve = map(tuple((
             tag("Valve "), alpha1,
