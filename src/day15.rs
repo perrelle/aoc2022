@@ -1,7 +1,9 @@
 use interval::{IntervalSet, ops::Range};
 use gcollections::ops::{constructor::Empty, Union, Cardinality, Difference, Bounded, ProperSubset};
 
-type Point = (i32, i32);
+use crate::rectangle_set::*;
+
+type Point = crate::rectangle_set::Point<i32>;
 
 #[derive (Debug)]
 pub struct Sensor {
@@ -26,15 +28,18 @@ mod parser {
             tag(", y="), i32,
             tag(": closest beacon is at x="), i32,
             tag(", y="), i32)),
-            |(_,x1,_,y1,_,x2,_,y2)|
-                Sensor { position: (x1,y1), neighbor: (x2,y2 ) });
+            |(_,x1,_,y1,_,x2,_,y2)| {
+                let position = Point {x: x1, y: y1};
+                let neighbor = Point {x: x2, y: y2};
+                Sensor { position, neighbor }
+            });
         let data = separated_list1(line_ending, sensor);
         all_consuming(terminated(data, multispace0))(input)
     }
 }
 
 pub fn dist(p: &Point, q: &Point) -> i32 {
-    (p.0 - q.0).abs() + (p.1 - q.1).abs()
+    (p.x - q.x).abs() + (p.y - q.y).abs()
 }
 
 fn scanned_positions(sensors: &Vec<Sensor>, row: i32) -> IntervalSet<i32> {
@@ -42,11 +47,11 @@ fn scanned_positions(sensors: &Vec<Sensor>, row: i32) -> IntervalSet<i32> {
 
     for sensor in sensors {
         let d = dist(&sensor.position, &sensor.neighbor);
-        let h = (sensor.position.1 - row).abs();
+        let h = (sensor.position.y - row).abs();
         if h <= d  {
             let interval = IntervalSet::new(
-                sensor.position.0 - (d - h),
-                sensor.position.0 + (d - h));
+                sensor.position.x - (d - h),
+                sensor.position.x + (d - h));
             intervals = intervals.union(&interval);
         }
     }
@@ -76,20 +81,20 @@ fn _old_part2(sensors: &Vec<Sensor>, range: (i32,i32)) -> Option<i64> {
     None
 }
 
-fn part2(sensors: &Vec<Sensor>, range: (i32,i32)) -> Option<i64> {
+fn part2(sensors: &Vec<Sensor>, range: (i32,i32)) -> i64 {
     for y in range.0..=range.1 {
         let mut x = range.0;
         loop {
             let mut change = false;
             for sensor in sensors {
                 let d = dist(&sensor.position, &sensor.neighbor);
-                let h = (sensor.position.1 - y).abs();
+                let h = (sensor.position.y - y).abs();
                 let r = d - h;
-                if x >= sensor.position.0 - r && x <= sensor.position.0 + r {
+                if x >= sensor.position.x - r && x <= sensor.position.x + r {
                     if x > range.1 {
                         break;
                     }
-                    x = sensor.position.0 + r + 1;
+                    x = sensor.position.x + r + 1;
                     change = true;
                 }
             }
@@ -99,12 +104,38 @@ fn part2(sensors: &Vec<Sensor>, range: (i32,i32)) -> Option<i64> {
             }
             else if !change {
                 println!("Found empty spot at ({x},{y})");
-                return Some(x as i64 * 4000000 + y as i64);
+                Some(x as i64 * 4000000 + y as i64);
             }
         }
     }
 
-    None
+    panic!()
+}
+
+fn part2_2(sensors: &Vec<Sensor>, range: (i32,i32)) -> i64 {
+    //let uncovered_area : RectangleSet<i32> = RectangleSet::whole();
+
+    fn transform(p: &Point) -> Point {
+        return Point { x: p.x - p.y, y: p.x + p.y }
+    }
+
+    for sensor in sensors {
+        let d = dist(&sensor.position, &sensor.neighbor);
+        let covered_rectangle = Rectangle {
+            bottom_left: Point {
+                x: sensor.position.x - sensor.position.y - d,
+                y: sensor.position.x + sensor.position.y - d,
+            },
+            top_right: Point {
+                x: sensor.position.x - sensor.position.y + d,
+                y: sensor.position.x + sensor.position.y + d,
+            }
+        };
+
+        // uncovered_area.diff
+    }
+
+    panic!();
 }
 
 pub fn solve(input: &str, row1: i32, range: (i32,i32)) -> Option<(u32,i64)> {
@@ -113,15 +144,15 @@ pub fn solve(input: &str, row1: i32, range: (i32,i32)) -> Option<(u32,i64)> {
     let mut scanned = scanned_positions(&data, row1);
 
     for sensor in &data {
-        if sensor.neighbor.1 == row1 {
-            scanned = scanned.difference(&sensor.neighbor.0);
+        if sensor.neighbor.y == row1 {
+            scanned = scanned.difference(&sensor.neighbor.x);
         }
     }
 
     let solution1 = scanned.size();
     let solution2 = part2(&data, range);
  
-    Some((solution1,solution2?))
+    Some((solution1,solution2))
 }
 
 #[test]
