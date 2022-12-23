@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-#[derive (Debug, Clone)]
+#[derive (Debug, Clone, Copy)]
 pub struct Point<T> {
     pub x: T,
     pub y: T
