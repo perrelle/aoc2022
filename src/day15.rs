@@ -104,7 +104,7 @@ fn part2(sensors: &Vec<Sensor>, range: (i32,i32)) -> i64 {
             }
             else if !change {
                 println!("Found empty spot at ({x},{y})");
-                Some(x as i64 * 4000000 + y as i64);
+                return x as i64 * 4000000 + y as i64;
             }
         }
     }
@@ -116,7 +116,7 @@ fn part2_2(sensors: &Vec<Sensor>, range: (i32,i32)) -> i64 {
     //let uncovered_area : RectangleSet<i32> = RectangleSet::whole();
 
     fn transform(p: &Point) -> Point {
-        return Point { x: p.x - p.y, y: p.x + p.y }
+        Point { x: p.x - p.y, y: p.x + p.y }
     }
 
     for sensor in sensors {
